@@ -6,35 +6,67 @@
 <script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 <style>
-  .table th, .table td {
+  .container {
+    max-width: 95%;
+  }
+  .header {
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+  }
+  .btn-month {
+    background-color: #f8f9fa; /* Light gray */
+    color: #333;
+    padding: 5px 10px;
+    font-size: 14px;
+  }
+  .remove-habit {
+    cursor: pointer;
+    background-color: #ffc0cb; /* Light pink */
+    color: white;
+    padding: 3px 7px;
+    border-radius: 5px;
+    font-size: 14px;
+  }
+  th, td {
     text-align: center;
     vertical-align: middle;
+    padding: 8px;
+  }
+  .table th, .table td {
+    border: 1px solid #ccc;
+  }
+  td {
+    cursor: pointer;
   }
   .completed {
     background-color: #a5d6a7;
   }
-  .remove-habit {
-    cursor: pointer;
-    color: white;
-    background-color: red;
-    padding: 5px 10px;
-    border: none;
-    border-radius: 5px;
+  .table th:nth-child(2), .table td:nth-child(2) {
+    min-width: 150px; /* Ensures the habit name column is wide enough */
+  }
+  .table thead th {
+    position: sticky;
+    top: 0;
+    background-color: white;
+  }
+  .day-column {
+    width: calc(100% / 31); /* Uniform day column width for up to 31 days */
   }
 </style>
 </head>
 <body>
-<div id="app" class="container mt-5">
-  <div class="text-center mb-3">
-    <button class="btn btn-primary mr-2" @click="changeMonth(-1)">Previous Month</button>
-    <span>{{ currentMonthName }} {{ currentYear }}</span>
-    <button class="btn btn-primary ml-2" @click="changeMonth(1)">Next Month</button>
+<div id="app" class="container mt-3">
+  <div class="header mb-3">
+    <button class="btn btn-month mr-2" @click="changeMonth(-1)">&laquo; Previous Month</button>
+    <span>{{ currentYear }}-{{ String(currentMonth).padStart(2, '0') }}</span>
+    <button class="btn btn-month ml-2" @click="changeMonth(1)">Next Month &raquo;</button>
   </div>
-  <table class="table table-bordered">
+  <table class="table">
     <thead>
       <tr>
         <th>Habit</th>
-        <th v-for="(day, index) in daysInMonth" :key="day" style="width: 3%;">
+        <th v-for="day in daysInMonth" :key="day" class="day-column">
           {{ day }}<br>
           <small>{{ dayNames[new Date(currentYear, currentMonth - 1, day).getDay()] }}</small>
         </th>
@@ -44,16 +76,14 @@
     <tbody>
       <tr v-for="habit in habits" :key="habit.id">
         <td>{{ habit.name }}</td>
-        <td v-for="day in daysInMonth" :key="day"
+        <td v-for="day in daysInMonth" :key="day" class="day-column"
             :class="{ 'completed': habit.dates.includes(getFullDate(day)) }"
             @click="toggleHabitDay(habit.id, getFullDate(day))">
         </td>
-        <td><button class="btn btn-danger remove-habit" @click="removeHabit(habit.id)">Remove</button></td>
+        <td><button class="btn remove-habit" @click="removeHabit(habit.id)">Remove</button></td>
       </tr>
       <tr>
-        <td colspan="35">
-          <button class="btn btn-success" @click="addHabit">Add Habit</button>
-        </td>
+        <td colspan="33"><button class="btn btn-success" @click="addHabit">Add Habit</button></td>
       </tr>
     </tbody>
   </table>
@@ -69,9 +99,6 @@ new Vue({
     dayNames: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   },
   computed: {
-    currentMonthName() {
-      return new Date(this.currentYear, this.currentMonth - 1).toLocaleString('default', { month: 'long' });
-    },
     daysInMonth() {
       const numDays = new Date(this.currentYear, this.currentMonth, 0).getDate();
       return Array.from({ length: numDays }, (_, i) => i + 1);
@@ -82,7 +109,7 @@ new Vue({
       return `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     },
     toggleHabitDay(habitId, dateString) {
-      const habit = this.habits.find(habit => habit.id === habitId);
+      const habit = this.habits.find(h => h.id === habitId);
       const index = habit.dates.indexOf(dateString);
       if (index === -1) {
         habit.dates.push(dateString);
