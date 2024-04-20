@@ -44,7 +44,7 @@
     background-color: #a5d6a7; /* Green background for completed habits */
   }
   .day-column {
-    width: calc(100% / 7); /* Adjusts day columns to have uniform width for a week */
+    width: calc(100% / 13); /* Adjusts day columns to have uniform width */
   }
 </style>
 </head>
@@ -61,8 +61,8 @@
     <thead>
       <tr>
         <th>Habit</th>
-        <th v-for="(day, index) in daysInWeek" :key="index" class="day-column">
-          {{ day }}
+        <th v-for="(month, index) in months" :key="index" class="day-column">
+          {{ month }}
         </th>
         <th>Action</th>
       </tr>
@@ -70,16 +70,15 @@
     <tbody>
       <tr v-for="habit in habits" :key="habit.id">
         <td>{{ habit.name }}</td>
-        <td v-for="(day, index) in daysInWeek" :key="index" class="day-column"
-            :class="{ 'completed': habit.days.includes(index) }"
-            @click="toggleHabitDay(habit, index)">
+        <td v-for="(monthIndex, index) in 12" :key="index" class="day-column"
+            :class="{ 'completed': habit.dates.includes(getFullDate(monthIndex + 1)) }">
         </td>
         <!-- Remove button in the action column -->
         <td><button class="btn remove-habit" @click="removeHabit(habit.id)">Remove</button></td>
       </tr>
       <!-- Add new habit row -->
       <tr>
-        <td colspan="8"><button class="btn btn-success" @click="addHabit">Add Habit</button></td>
+        <td colspan="14"><button class="btn btn-success" @click="addHabit">Add Habit</button></td>
       </tr>
     </tbody>
   </table>
@@ -91,31 +90,24 @@ new Vue({
   data: {
     currentYear: new Date().getFullYear(),
     habits: [],
-    daysInWeek: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] // Days of the week
+    months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   },
   methods: {
+    // Returns date string in YYYY-MM-DD format
+    getFullDate(month) {
+      return `${this.currentYear}-${String(month).padStart(2, '0')}-01`;
+    },
     // Adds a new habit to the list
     addHabit() {
       const name = prompt("Enter new habit name:");
       if (name) {
-        this.habits.push({ id: Date.now(), name, days: [] });
+        this.habits.push({ id: Date.now(), name, dates: [] });
         this.saveHabits();
       }
     },
     // Removes a habit from the list
     removeHabit(habitId) {
       this.habits = this.habits.filter(habit => habit.id !== habitId);
-      this.saveHabits();
-    },
-    // Toggles the completion status of a habit on a specific day
-    toggleHabitDay(habit, index) {
-      const habitIndex = this.habits.indexOf(habit);
-      if (habit.days.includes(index)) {
-        habit.days.splice(habit.days.indexOf(index), 1);
-      } else {
-        habit.days.push(index);
-      }
-      this.$set(this.habits, habitIndex, habit);
       this.saveHabits();
     },
     // Changes the current year
