@@ -7,6 +7,10 @@
 <!-- Bootstrap CSS for styling -->
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 <style>
+  .container {
+    max-width: 80%;
+    margin-top: 50px;
+  }
   .header {
     font-size: 24px;
     font-weight: bold;
@@ -19,30 +23,32 @@
     font-size: 14px;
   }
   .heatmap {
-    display: flex;
-    flex-wrap: wrap;
-    max-width: 800px;
-    margin: auto;
+    display: grid;
+    grid-template-columns: 30px repeat(12, 1fr); /* 12 months plus label column */
+    grid-gap: 5px;
   }
   .month {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 0 10px;
+    display: grid;
+    grid-template-rows: repeat(7, 30px); /* 7 days a week */
   }
   .day {
-    width: 20px;
-    height: 20px;
-    margin: 2px;
+    width: 30px;
+    height: 30px;
     background-color: #e0e0e0;
+    border: 1px solid #ccc;
   }
   .completed {
     background-color: #76c7c0;
   }
+  .month-label {
+    writing-mode: vertical-rl;
+    text-align: center;
+    font-weight: bold;
+  }
   .habit-title {
     font-size: 1.2rem;
     font-weight: bold;
-    margin-bottom: 10px;
+    margin-top: 10px;
   }
   .remove-btn {
     background-color: #ffc0cb;
@@ -52,50 +58,39 @@
     padding: 3px 7px;
     font-size: 14px;
   }
-  .month-label {
-    font-weight: bold;
-    margin-right: 5px;
-  }
-  .text-center {
-    text-align: center;
-  }
-  .day-labels {
-    display: flex;
-    justify-content: space-between;
-    max-width: 800px;
-    margin: auto;
-  }
-  .day-label {
-    width: 20px;
-    text-align: center;
-    font-weight: bold;
-  }
 </style>
 </head>
 <body>
-<div id="app" class="container mt-5">
+<div id="app" class="container">
   <div class="header mb-4">
     <button class="btn btn-year mr-2" @click="changeYear(-1)">Previous Year</button>
     <span>{{ currentYear }}</span>
     <button class="btn btn-year ml-2" @click="changeYear(1)">Next Year</button>
   </div>
   
-  <div class="day-labels">
-    <div v-for="day in weekDays" :key="day" class="day-label">{{ day }}</div>
-  </div>
-  
-  <div v-for="habit in habits" :key="habit.id" class="mb-3">
-    <div class="habit-title">{{ habit.name }}</div>
-    <div class="heatmap">
-      <div v-for="dateString in allDates" :key="dateString" class="day"
-           :class="{ 'completed': habit.dates.includes(dateString) }"
-           @click="toggleHabitDay(habit.id, dateString)">
+  <div class="heatmap">
+    <div class="month-label">Sun</div>
+    <div class="month-label">Mon</div>
+    <div class="month-label">Tue</div>
+    <div class="month-label">Wed</div>
+    <div class="month-label">Thu</div>
+    <div class="month-label">Fri</div>
+    <div class="month-label">Sat</div>
+    <div v-for="month in 12" :key="month" class="month">
+      <div v-for="day in getDaysInYear(currentYear, month)" :key="day.dateString" class="day"
+           :class="{ 'completed': day.isHabit }"
+           @click="toggleHabitDay(day.dateString)">
       </div>
     </div>
-    <button class="btn remove-btn mt-2" @click="removeHabit(habit.id)">Remove</button>
   </div>
   
-  <button class="btn btn-primary" @click="addHabit">Add New Habit</button>
+  <div class="habit-title mt-4">Habits</div>
+  <div v-for="habit in habits" :key="habit.id" class="mt-2">
+    {{ habit.name }}
+    <button class="btn remove-btn ml-2" @click="removeHabit(habit.id)">Remove</button>
+  </div>
+  
+  <button class="btn btn-primary mt-4" @click="addHabit">Add New Habit</button>
 </div>
 
 <script>
@@ -104,31 +99,33 @@ new Vue({
   data: {
     currentYear: new Date().getFullYear(),
     habits: JSON.parse(localStorage.getItem('habits')) || [],
-    weekDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  },
-  computed: {
-    allDates() {
-      const dates = [];
-      for (let month = 1; month <= 12; month++) {
-        for (let day = 1; day <= 31; day++) {
-          const date = new Date(this.currentYear, month - 1, day);
-          if (date.getMonth() === month - 1) { // Check if the date is within the current month
-            dates.push(date.toISOString().split('T')[0]);
-          }
-        }
-      }
-      return dates;
-    }
   },
   methods: {
-    toggleHabitDay(habitId, dateString) {
-      const habit = this.habits.find(h => h.id === habitId);
-      const index = habit.dates.indexOf(dateString);
-      if (index === -1) {
-        habit.dates.push(dateString);
-      } else {
-        habit.dates.splice(index, 1);
+    getDaysInYear(year, month) {
+      const days = [];
+      for (let day = 1; day <= 31; day++) {
+        const date = new Date(year, month - 1, day);
+        if (date.getMonth() === month - 1) {
+          days.push({
+            dateString: date.toISOString().split('T')[0],
+            isHabit: this.isHabitOnDate(date.toISOString().split('T')[0])
+          });
+        }
       }
+      return days;
+    },
+    isHabitOnDate(dateString) {
+      return this.habits.some(habit => habit.dates.includes(dateString));
+    },
+    toggleHabitDay(dateString) {
+      this.habits.forEach(habit => {
+        const index = habit.dates.indexOf(dateString);
+        if (index === -1) {
+          habit.dates.push(dateString);
+        } else {
+          habit.dates.splice(index, 1);
+        }
+      });
       this.saveHabits();
     },
     addHabit() {
@@ -139,10 +136,8 @@ new Vue({
       }
     },
     removeHabit(habitId) {
-      if(confirm('Are you sure you want to remove this habit?')) {
-        this.habits = this.habits.filter(habit => habit.id !== habitId);
-        this.saveHabits();
-      }
+      this.habits = this.habits.filter(habit => habit.id !== habitId);
+      this.saveHabits();
     },
     changeYear(direction) {
       this.currentYear += direction;
@@ -152,15 +147,15 @@ new Vue({
       localStorage.setItem('habits', JSON.stringify(this.habits));
     }
   },
-  mounted() {
-    // If there are no habits in local storage, load a default set of habits
-    if (!this.habits.length) {
-      this.habits = [
-        { id: 1, name: 'Read', dates: [] },
+  created() {
+    if (!localStorage.getItem('habits')) {
+      // Populate with example data
+      localStorage.setItem('habits', JSON.stringify([
+        { id: 1, name: 'Read', dates: ['2023-01-01', '2023-01-02'] },
         { id: 2, name: 'Exercise', dates: [] },
-        // ... more default habits can be added here
-      ];
-      this.saveHabits();
+        // ... more habits
+      ]));
+      this.habits = JSON.parse(localStorage.getItem('habits'));
     }
   }
 });
