@@ -1,41 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Yearly Habit Tracker</title>
-<script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
-<style>
-    .heatmap {
-        display: grid;
-        grid-template-columns: repeat(53, 25px); /* Max 53 weeks in a year */
-        grid-auto-rows: 25px; /* Height of each day block */
-        gap: 2px; /* Space between blocks */
-    }
-    .day {
-        width: 25px;
-        height: 25px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        background-color: #f8f9fa; /* Light grey for non-completed days */
-        border: 1px solid #ccc;
-    }
-    .completed {
-        background-color: #4CAF50; /* Green for completed days */
-    }
-</style>
+    <meta charset="UTF-8">
+    <title>Yearly Habit Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
+    <style>
+        .heatmap {
+            display: flex;
+            flex-wrap: wrap;
+            max-width: 140px; /* Adjust based on day cell width */
+        }
+        .day {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background-color: #f8f9fa; /* Light grey for non-completed days */
+            border: 1px solid #ccc;
+        }
+        .completed {
+            background-color: #4CAF50; /* Green for completed days */
+        }
+    </style>
 </head>
 <body>
 <div id="app">
-    <div class="heatmap">
-        <!-- Generate days for the heatmap -->
-        <div v-for="week in calculateWeeksOfYear(currentYear)" :key="week.start.getTime()" class="week">
-            <div v-for="day in week" :key="day" class="day" 
-                :class="{'completed': habits.includes(day.toISOString().slice(0, 10))}"
-                @click="toggleHabit(day.toISOString().slice(0, 10))">
-                {{ day.getDate() }}
-            </div>
+    <div v-for="week in calculateWeeksOfYear(currentYear)" :key="week[0]">
+        <div v-for="date in week" :key="date" class="day" 
+            :class="{'completed': habits.includes(date.toISOString().slice(0, 10))}"
+            @click="toggleHabit(date.toISOString().slice(0, 10))">
+            {{ date.getDate() }}
         </div>
     </div>
 </div>
@@ -51,20 +47,26 @@ new Vue({
         calculateWeeksOfYear(year) {
             const startDate = new Date(year, 0, 1);
             const endDate = new Date(year, 11, 31);
-            const weeks = [];
             let currentWeek = [];
+            let weeks = [];
 
+            // Adjust the start date to the first Sunday of the year
             while (startDate.getDay() !== 0) {
-                startDate.setDate(startDate.getDate() + 1); // Move to first Sunday of the year
+                startDate.setDate(startDate.getDate() + 1);
             }
 
             while (startDate <= endDate) {
                 currentWeek.push(new Date(startDate));
                 startDate.setDate(startDate.getDate() + 1);
-                if (currentWeek.length === 7 || startDate > endDate) {
-                    weeks.push(currentWeek);
+                if (currentWeek.length === 7) {
+                    weeks.push([...currentWeek]);
                     currentWeek = [];
                 }
+            }
+
+            // Handle the last week which might be less than 7 days
+            if (currentWeek.length > 0) {
+                weeks.push([...currentWeek]);
             }
 
             return weeks;
