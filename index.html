@@ -12,12 +12,12 @@
     max-width: 95%;
   }
   .header {
-    font-size: 24px; /* Larger and bold font size for year display */
+    font-size: 24px; /* Larger and bold font size for month/year display */
     font-weight: bold;
     text-align: center;
   }
-  .btn-year {
-    background-color: #f8f9fa; /* Light gray for year navigation buttons */
+  .btn-month {
+    background-color: #f8f9fa; /* Light gray for month navigation buttons */
     color: #333;
     padding: 5px 10px;
     font-size: 14px; /* Smaller button font size */
@@ -44,25 +44,26 @@
     background-color: #a5d6a7; /* Green background for completed habits */
   }
   .day-column {
-    width: calc(100% / 13); /* Adjusts day columns to have uniform width */
+    width: calc(100% / 33); /* Adjusts day columns to have uniform width */
   }
 </style>
 </head>
 <body>
 <div id="app" class="container mt-3">
   <div class="header mb-3">
-    <!-- Year navigation buttons -->
-    <button class="btn btn-year mr-2" @click="changeYear(-1)">&laquo; Previous Year</button>
-    <span>{{ currentYear }}</span>
-    <button class="btn btn-year ml-2" @click="changeYear(1)">Next Year &raquo;</button>
+    <!-- Month navigation buttons -->
+    <button class="btn btn-month mr-2" @click="changeMonth(-1)">&laquo; Previous Month</button>
+    <span>{{ currentYear }}-{{ String(currentMonth).padStart(2, '0') }}</span>
+    <button class="btn btn-month ml-2" @click="changeMonth(1)">Next Month &raquo;</button>
   </div>
-  <!-- Habit tracker table for the year -->
+  <!-- Habit tracker table -->
   <table class="table table-bordered">
     <thead>
       <tr>
         <th>Habit</th>
-        <th v-for="(month, index) in months" :key="index" class="day-column">
-          {{ month }}
+        <th v-for="day in daysInMonth" :key="day" class="day-column">
+          {{ day }}<br>
+          <small>{{ dayNames[new Date(currentYear, currentMonth - 1, day).getDay()] }}</small>
         </th>
         <th>Action</th>
       </tr>
@@ -70,15 +71,16 @@
     <tbody>
       <tr v-for="habit in habits" :key="habit.id">
         <td>{{ habit.name }}</td>
-        <td v-for="(monthIndex, index) in 12" :key="index" class="day-column"
-            :class="{ 'completed': habit.dates.includes(getFullDate(monthIndex + 1)) }">
+        <td v-for="day in daysInMonth" :key="day" class="day-column"
+            :class="{ 'completed': habit.dates.includes(getFullDate(day)) }"
+            @click="toggleHabitDay(habit.id, getFullDate(day))">
         </td>
         <!-- Remove button in the action column -->
         <td><button class="btn remove-habit" @click="removeHabit(habit.id)">Remove</button></td>
       </tr>
       <!-- Add new habit row -->
       <tr>
-        <td colspan="14"><button class="btn btn-success" @click="addHabit">Add Habit</button></td>
+        <td colspan="33"><button class="btn btn-success" @click="addHabit">Add Habit</button></td>
       </tr>
     </tbody>
   </table>
@@ -89,13 +91,32 @@ new Vue({
   el: '#app',
   data: {
     currentYear: new Date().getFullYear(),
+    currentMonth: new Date().getMonth() + 1,
     habits: [],
-    months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    dayNames: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  },
+  computed: {
+    // Calculate days in the current month
+    daysInMonth() {
+      const numDays = new Date(this.currentYear, this.currentMonth, 0).getDate();
+      return Array.from({ length: numDays }, (_, i) => i + 1);
+    }
   },
   methods: {
     // Returns date string in YYYY-MM-DD format
-    getFullDate(month) {
-      return `${this.currentYear}-${String(month).padStart(2, '0')}-01`;
+    getFullDate(day) {
+      return `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    },
+    // Toggles the completion status of a habit on a specific day
+    toggleHabitDay(habitId, dateString) {
+      const habit = this.habits.find(h => h.id === habitId);
+      const index = habit.dates.indexOf(dateString);
+      if (index === -1) {
+        habit.dates.push(dateString);
+      } else {
+        habit.dates.splice(index, 1);
+      }
+      this.saveHabits();
     },
     // Adds a new habit to the list
     addHabit() {
@@ -110,9 +131,16 @@ new Vue({
       this.habits = this.habits.filter(habit => habit.id !== habitId);
       this.saveHabits();
     },
-    // Changes the current year
-    changeYear(direction) {
-      this.currentYear += direction;
+    // Changes the current month and loads new days
+    changeMonth(direction) {
+      this.currentMonth += direction;
+      if (this.currentMonth < 1) {
+        this.currentMonth = 12;
+        this.currentYear -= 1;
+      } else if (this.currentMonth > 12) {
+        this.currentMonth = 1;
+        this.currentYear += 1;
+      }
     },
     // Loads habits from local storage
     loadHabits() {
