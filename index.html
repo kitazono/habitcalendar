@@ -7,10 +7,21 @@
 <!-- Bootstrap CSS for styling -->
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 <style>
-  .habit-heatmap {
+  .header {
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+  }
+  .btn-year {
+    background-color: #f8f9fa;
+    color: #333;
+    padding: 5px 10px;
+    font-size: 14px;
+  }
+  .heatmap {
     display: grid;
-    grid-template-columns: repeat(7, 1fr); /* 7 days a week */
-    gap: 4px;
+    grid-template-columns: repeat(53, 1fr); /* 53 weeks to cover entire year */
+    gap: 2px;
   }
   .day {
     width: 20px;
@@ -18,54 +29,40 @@
     background-color: #e0e0e0;
   }
   .completed {
-    background-color: #76c7c0; /* Change colors based on frequency if needed */
+    background-color: #76c7c0;
   }
   .habit-title {
     font-size: 1.2rem;
     font-weight: bold;
+    margin-bottom: 10px;
   }
-  .habit-row {
-    display: flex;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-  .habit-row > div {
-    margin-right: 10px;
-  }
-  .month-label {
-    font-weight: bold;
-    margin-right: 5px;
-  }
-  .text-center {
-    text-align: center;
+  .remove-btn {
+    background-color: #ffc0cb;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    padding: 3px 7px;
+    font-size: 14px;
   }
 </style>
 </head>
 <body>
 <div id="app" class="container mt-5">
-  <div class="text-center mb-4">
-    <button class="btn btn-secondary mr-2" @click="changeYear(-1)">Previous Year</button>
+  <div class="header mb-4">
+    <button class="btn btn-year mr-2" @click="changeYear(-1)">Previous Year</button>
     <span>{{ currentYear }}</span>
-    <button class="btn btn-secondary ml-2" @click="changeYear(1)">Next Year</button>
+    <button class="btn btn-year ml-2" @click="changeYear(1)">Next Year</button>
   </div>
-  
-  <div v-for="habit in habits" :key="habit.id" class="card mb-3">
-    <div class="card-body">
-      <div class="habit-row">
-        <div class="habit-title">{{ habit.name }}</div>
-        <button class="btn btn-danger btn-sm" @click="removeHabit(habit.id)">Remove</button>
-      </div>
-      
-      <div v-for="monthIndex in 12" :key="monthIndex" class="habit-heatmap">
-        <div class="month-label">{{ monthNames[monthIndex - 1] }}</div>
-        <div v-for="day in getDaysInMonth(monthIndex)" :key="day" class="day"
-             :class="{ 'completed': habit.dates.includes(getFullDate(day, monthIndex)) }"
-             @click="toggleHabitDay(habit.id, getFullDate(day, monthIndex))">
-        </div>
+  <div v-for="habit in habits" :key="habit.id" class="mb-3">
+    <div class="habit-title">{{ habit.name }}</div>
+    <div class="heatmap">
+      <div v-for="dateString in allDates" :key="dateString" class="day"
+           :class="{ 'completed': habit.dates.includes(dateString) }"
+           @click="toggleHabitDay(habit.id, dateString)">
       </div>
     </div>
+    <button class="btn remove-btn mt-2" @click="removeHabit(habit.id)">Remove</button>
   </div>
-  
   <button class="btn btn-primary" @click="addHabit">Add New Habit</button>
 </div>
 
@@ -74,17 +71,22 @@ new Vue({
   el: '#app',
   data: {
     currentYear: new Date().getFullYear(),
-    habits: JSON.parse(localStorage.getItem('habits')) || [],
-    monthNames: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    habits: JSON.parse(localStorage.getItem('habits')) || []
+  },
+  computed: {
+    // Generates an array of date strings for the entire year
+    allDates() {
+      let dates = [];
+      for(let month = 0; month < 12; month++) {
+        let numDays = new Date(this.currentYear, month + 1, 0).getDate();
+        for(let day = 1; day <= numDays; day++) {
+          dates.push(`${this.currentYear}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+        }
+      }
+      return dates;
+    }
   },
   methods: {
-    getDaysInMonth(monthIndex) {
-      const numDays = new Date(this.currentYear, monthIndex, 0).getDate();
-      return Array.from({ length: numDays }, (_, i) => i + 1);
-    },
-    getFullDate(day, monthIndex) {
-      return `${this.currentYear}-${String(monthIndex).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    },
     toggleHabitDay(habitId, dateString) {
       const habit = this.habits.find(h => h.id === habitId);
       const index = habit.dates.indexOf(dateString);
@@ -103,10 +105,8 @@ new Vue({
       }
     },
     removeHabit(habitId) {
-      if(confirm('Are you sure you want to remove this habit?')) {
-        this.habits = this.habits.filter(habit => habit.id !== habitId);
-        this.saveHabits();
-      }
+      this.habits = this.habits.filter(habit => habit.id !== habitId);
+      this.saveHabits();
     },
     changeYear(direction) {
       this.currentYear += direction;
@@ -116,12 +116,23 @@ new Vue({
       localStorage.setItem('habits', JSON.stringify(this.habits));
     }
   },
-  watch: {
-    habits: {
-      handler() {
-        this.saveHabits();
-      },
-      deep: true
+  mounted() {
+    this.$nextTick(() => {
+      // Ensure the heatmap grid columns fit the number of weeks in the year
+      const weeksInYear = this.getWeeksInYear(this.currentYear);
+      this.$el.querySelectorAll('.heatmap').forEach(el => {
+        el.style.gridTemplateColumns = `repeat(${weeksInYear}, 1fr)`;
+      });
+    });
+  },
+  methods: {
+    // ...existing methods...
+    getWeeksInYear(year) {
+      const startOfYear = new Date(year, 0, 1);
+      const endOfYear = new Date(year, 11, 31);
+      const startDayOfWeek = startOfYear.getDay();
+      const daysInYear = (endOfYear - startOfYear) / (1000 * 60 * 60 * 24) + 1;
+      return Math.ceil((startDayOfWeek + daysInYear) / 7);
     }
   }
 });
