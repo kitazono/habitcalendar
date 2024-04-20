@@ -3,66 +3,61 @@
 <head>
 <meta charset="UTF-8">
 <title>Habit Tracker with Vue.js</title>
+<!-- Vue.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
+<!-- Bootstrap CSS CDN for styling -->
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 <style>
   .container {
     max-width: 95%;
   }
   .header {
-    font-size: 24px;
+    font-size: 24px; /* Larger and bold font size for month/year display */
     font-weight: bold;
     text-align: center;
   }
   .btn-month {
-    background-color: #f8f9fa; /* Light gray */
+    background-color: #f8f9fa; /* Light gray for month navigation buttons */
     color: #333;
     padding: 5px 10px;
-    font-size: 14px;
+    font-size: 14px; /* Smaller button font size */
   }
   .remove-habit {
     cursor: pointer;
-    background-color: #ffc0cb; /* Light pink */
+    background-color: #ffc0cb; /* Light pink for remove button */
     color: white;
     padding: 3px 7px;
     border-radius: 5px;
-    font-size: 14px;
+    font-size: 14px; /* Smaller button size */
   }
-  th, td {
+  .table th, .table td {
+    border: 1px solid #ccc;
     text-align: center;
     vertical-align: middle;
     padding: 8px;
   }
-  .table th, .table td {
-    border: 1px solid #ccc;
-  }
-  td {
-    cursor: pointer;
+  .table th:first-child, .table td:first-child {
+    min-width: 200px; /* Ensures the habit name column is wide enough */
+    white-space: nowrap; /* Prevents text from wrapping */
   }
   .completed {
-    background-color: #a5d6a7;
-  }
-  .table th:nth-child(2), .table td:nth-child(2) {
-    min-width: 150px; /* Ensures the habit name column is wide enough */
-  }
-  .table thead th {
-    position: sticky;
-    top: 0;
-    background-color: white;
+    background-color: #a5d6a7; /* Green background for completed habits */
   }
   .day-column {
-    width: calc(100% / 31); /* Uniform day column width for up to 31 days */
+    width: calc(100% / 33); /* Adjusts day columns to have uniform width */
   }
 </style>
 </head>
 <body>
 <div id="app" class="container mt-3">
   <div class="header mb-3">
+    <!-- Month navigation buttons -->
     <button class="btn btn-month mr-2" @click="changeMonth(-1)">&laquo; Previous Month</button>
     <span>{{ currentYear }}-{{ String(currentMonth).padStart(2, '0') }}</span>
     <button class="btn btn-month ml-2" @click="changeMonth(1)">Next Month &raquo;</button>
   </div>
-  <table class="table">
+  <!-- Habit tracker table -->
+  <table class="table table-bordered">
     <thead>
       <tr>
         <th>Habit</th>
@@ -80,8 +75,10 @@
             :class="{ 'completed': habit.dates.includes(getFullDate(day)) }"
             @click="toggleHabitDay(habit.id, getFullDate(day))">
         </td>
+        <!-- Remove button in the action column -->
         <td><button class="btn remove-habit" @click="removeHabit(habit.id)">Remove</button></td>
       </tr>
+      <!-- Add new habit row -->
       <tr>
         <td colspan="33"><button class="btn btn-success" @click="addHabit">Add Habit</button></td>
       </tr>
@@ -99,15 +96,18 @@ new Vue({
     dayNames: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   },
   computed: {
+    // Calculate days in the current month
     daysInMonth() {
       const numDays = new Date(this.currentYear, this.currentMonth, 0).getDate();
       return Array.from({ length: numDays }, (_, i) => i + 1);
     }
   },
   methods: {
+    // Returns date string in YYYY-MM-DD format
     getFullDate(day) {
       return `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     },
+    // Toggles the completion status of a habit on a specific day
     toggleHabitDay(habitId, dateString) {
       const habit = this.habits.find(h => h.id === habitId);
       const index = habit.dates.indexOf(dateString);
@@ -118,6 +118,7 @@ new Vue({
       }
       this.saveHabits();
     },
+    // Adds a new habit to the list
     addHabit() {
       const name = prompt("Enter new habit name:");
       if (name) {
@@ -125,10 +126,12 @@ new Vue({
         this.saveHabits();
       }
     },
+    // Removes a habit from the list
     removeHabit(habitId) {
       this.habits = this.habits.filter(habit => habit.id !== habitId);
       this.saveHabits();
     },
+    // Changes the current month and loads new days
     changeMonth(direction) {
       this.currentMonth += direction;
       if (this.currentMonth < 1) {
@@ -139,12 +142,14 @@ new Vue({
         this.currentYear += 1;
       }
     },
+    // Loads habits from local storage
     loadHabits() {
       const savedHabits = localStorage.getItem('habits');
       if (savedHabits) {
         this.habits = JSON.parse(savedHabits);
       }
     },
+    // Saves habits to local storage
     saveHabits() {
       localStorage.setItem('habits', JSON.stringify(this.habits));
     }
