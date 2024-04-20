@@ -2,20 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Habit Heatmap Tracker</title>
+<title>Habit Yearly Heatmap Tracker</title>
 <script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
 <!-- Bootstrap CSS for styling -->
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 <style>
   .habit-heatmap {
     display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 4px;
-  }
-  .month {
-    display: grid;
     grid-template-columns: repeat(7, 1fr); /* 7 days a week */
-    gap: 2px;
+    gap: 4px;
   }
   .day {
     width: 20px;
@@ -23,39 +18,55 @@
     background-color: #e0e0e0;
   }
   .completed {
-    background-color: #76c7c0; /* You can change colors based on frequency */
+    background-color: #76c7c0; /* Change colors based on frequency if needed */
   }
   .habit-title {
     font-size: 1.2rem;
     font-weight: bold;
+  }
+  .habit-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .habit-row > div {
     margin-right: 10px;
+  }
+  .month-label {
+    font-weight: bold;
+    margin-right: 5px;
+  }
+  .text-center {
+    text-align: center;
   }
 </style>
 </head>
 <body>
 <div id="app" class="container mt-5">
-  <div class="row">
-    <div class="col-12">
-      <h2 class="text-center mb-4">Habit Heatmap</h2>
-      <div v-for="habit in habits" :key="habit.id" class="card mb-3">
-        <div class="card-body">
-          <div class="d-flex align-items-center mb-2">
-            <div class="habit-title">{{ habit.name }}</div>
-            <div class="habit-heatmap">
-              <div v-for="monthIndex in 12" :key="monthIndex" class="month">
-                <div v-for="day in getDaysInMonth(monthIndex)" :key="day"
-                     class="day"
-                     :class="{ 'completed': habit.dates.includes(getFullDate(day, monthIndex)) }"
-                     @click="toggleHabitDay(habit.id, getFullDate(day, monthIndex))">
-                </div>
-              </div>
-            </div>
-          </div>
+  <div class="text-center mb-4">
+    <button class="btn btn-secondary mr-2" @click="changeYear(-1)">Previous Year</button>
+    <span>{{ currentYear }}</span>
+    <button class="btn btn-secondary ml-2" @click="changeYear(1)">Next Year</button>
+  </div>
+  
+  <div v-for="habit in habits" :key="habit.id" class="card mb-3">
+    <div class="card-body">
+      <div class="habit-row">
+        <div class="habit-title">{{ habit.name }}</div>
+        <button class="btn btn-danger btn-sm" @click="removeHabit(habit.id)">Remove</button>
+      </div>
+      
+      <div v-for="monthIndex in 12" :key="monthIndex" class="habit-heatmap">
+        <div class="month-label">{{ monthNames[monthIndex - 1] }}</div>
+        <div v-for="day in getDaysInMonth(monthIndex)" :key="day" class="day"
+             :class="{ 'completed': habit.dates.includes(getFullDate(day, monthIndex)) }"
+             @click="toggleHabitDay(habit.id, getFullDate(day, monthIndex))">
         </div>
       </div>
-      <button class="btn btn-primary" @click="addHabit">Add Habit</button>
     </div>
   </div>
+  
+  <button class="btn btn-primary" @click="addHabit">Add New Habit</button>
 </div>
 
 <script>
@@ -63,11 +74,8 @@ new Vue({
   el: '#app',
   data: {
     currentYear: new Date().getFullYear(),
-    habits: [
-      { id: 1, name: '📔 Note making 📔', dates: [] },
-      { id: 2, name: '🏋️ Exercise 🏋️', dates: [] },
-      { id: 3, name: '📚 Reading 📚', dates: [] },
-    ],
+    habits: JSON.parse(localStorage.getItem('habits')) || [],
+    monthNames: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   },
   methods: {
     getDaysInMonth(monthIndex) {
@@ -85,13 +93,36 @@ new Vue({
       } else {
         habit.dates.splice(index, 1);
       }
+      this.saveHabits();
     },
     addHabit() {
       const name = prompt("Enter new habit name:");
       if (name) {
         this.habits.push({ id: Date.now(), name, dates: [] });
+        this.saveHabits();
       }
     },
+    removeHabit(habitId) {
+      if(confirm('Are you sure you want to remove this habit?')) {
+        this.habits = this.habits.filter(habit => habit.id !== habitId);
+        this.saveHabits();
+      }
+    },
+    changeYear(direction) {
+      this.currentYear += direction;
+      this.saveHabits();
+    },
+    saveHabits() {
+      localStorage.setItem('habits', JSON.stringify(this.habits));
+    }
+  },
+  watch: {
+    habits: {
+      handler() {
+        this.saveHabits();
+      },
+      deep: true
+    }
   }
 });
 </script>
