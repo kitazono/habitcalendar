@@ -4,25 +4,11 @@
 <meta charset="UTF-8">
 <title>Habit Tracker with Vue.js</title>
 <script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    padding: 20px;
-    display: flex;
-    justify-content: center;
-  }
-  table {
-    border-collapse: collapse;
-    margin-top: 20px;
-    width: 100%;
-  }
-  th, td {
-    border: 1px solid #ccc;
-    padding: 8px;
+  .table th, .table td {
     text-align: center;
-  }
-  td {
-    cursor: pointer;
+    vertical-align: middle;
   }
   .completed {
     background-color: #a5d6a7;
@@ -38,17 +24,20 @@
 </style>
 </head>
 <body>
-<div id="app">
-  <div>
-    <button @click="changeMonth(-1)">Previous Month</button>
+<div id="app" class="container mt-5">
+  <div class="text-center mb-3">
+    <button class="btn btn-primary mr-2" @click="changeMonth(-1)">Previous Month</button>
     <span>{{ currentMonthName }} {{ currentYear }}</span>
-    <button @click="changeMonth(1)">Next Month</button>
+    <button class="btn btn-primary ml-2" @click="changeMonth(1)">Next Month</button>
   </div>
-  <table>
+  <table class="table table-bordered">
     <thead>
       <tr>
         <th>Habit</th>
-        <th v-for="day in daysInMonth" :key="day">{{ day }}</th>
+        <th v-for="(day, index) in daysInMonth" :key="day" style="width: 3%;">
+          {{ day }}<br>
+          <small>{{ dayNames[new Date(currentYear, currentMonth - 1, day).getDay()] }}</small>
+        </th>
         <th>Action</th>
       </tr>
     </thead>
@@ -59,10 +48,12 @@
             :class="{ 'completed': habit.dates.includes(getFullDate(day)) }"
             @click="toggleHabitDay(habit.id, getFullDate(day))">
         </td>
-        <td><button class="remove-habit" @click="removeHabit(habit.id)">Remove</button></td>
+        <td><button class="btn btn-danger remove-habit" @click="removeHabit(habit.id)">Remove</button></td>
       </tr>
       <tr>
-        <td colspan="33"><button @click="addHabit">Add Habit</button></td>
+        <td colspan="35">
+          <button class="btn btn-success" @click="addHabit">Add Habit</button>
+        </td>
       </tr>
     </tbody>
   </table>
@@ -73,24 +64,25 @@ new Vue({
   el: '#app',
   data: {
     currentYear: new Date().getFullYear(),
-    currentMonth: new Date().getMonth(),
-    habits: []
+    currentMonth: new Date().getMonth() + 1,
+    habits: [],
+    dayNames: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   },
   computed: {
     currentMonthName() {
-      return new Date(this.currentYear, this.currentMonth).toLocaleString('default', { month: 'long' });
+      return new Date(this.currentYear, this.currentMonth - 1).toLocaleString('default', { month: 'long' });
     },
     daysInMonth() {
-      const numDays = new Date(this.currentYear, this.currentMonth + 1, 0).getDate();
+      const numDays = new Date(this.currentYear, this.currentMonth, 0).getDate();
       return Array.from({ length: numDays }, (_, i) => i + 1);
     }
   },
   methods: {
     getFullDate(day) {
-      return `${this.currentYear}-${String(this.currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      return `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     },
     toggleHabitDay(habitId, dateString) {
-      const habit = this.habits.find(h => h.id === habitId);
+      const habit = this.habits.find(habit => habit.id === habitId);
       const index = habit.dates.indexOf(dateString);
       if (index === -1) {
         habit.dates.push(dateString);
@@ -112,11 +104,11 @@ new Vue({
     },
     changeMonth(direction) {
       this.currentMonth += direction;
-      if (this.currentMonth < 0) {
-        this.currentMonth = 11;
+      if (this.currentMonth < 1) {
+        this.currentMonth = 12;
         this.currentYear -= 1;
-      } else if (this.currentMonth > 11) {
-        this.currentMonth = 0;
+      } else if (this.currentMonth > 12) {
+        this.currentMonth = 1;
         this.currentYear += 1;
       }
     },
