@@ -1,86 +1,162 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Yearly Habit Tracker</title>
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
-    <style>
-        .heatmap {
-            display: flex;
-            flex-wrap: wrap;
-            max-width: 140px; /* Adjust based on day cell width */
-        }
-        .day {
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            background-color: #f8f9fa; /* Light grey for non-completed days */
-            border: 1px solid #ccc;
-        }
-        .completed {
-            background-color: #4CAF50; /* Green for completed days */
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Habit Tracker with Vue.js</title>
+<!-- Vue.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
+<!-- Bootstrap CSS CDN for styling -->
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<style>
+  .container {
+    max-width: 95%;
+  }
+  .header {
+    font-size: 24px; /* Larger and bold font size for month/year display */
+    font-weight: bold;
+    text-align: center;
+  }
+  .btn-month {
+    background-color: #f8f9fa; /* Light gray for month navigation buttons */
+    color: #333;
+    padding: 5px 10px;
+    font-size: 14px; /* Smaller button font size */
+  }
+  .remove-habit {
+    cursor: pointer;
+    background-color: #ffc0cb; /* Light pink for remove button */
+    color: white;
+    padding: 3px 7px;
+    border-radius: 5px;
+    font-size: 14px; /* Smaller button size */
+  }
+  .table th, .table td {
+    border: 1px solid #ccc;
+    text-align: center;
+    vertical-align: middle;
+    padding: 8px;
+  }
+  .table th:first-child, .table td:first-child {
+    min-width: 200px; /* Ensures the habit name column is wide enough */
+    white-space: nowrap; /* Prevents text from wrapping */
+  }
+  .completed {
+    background-color: #a5d6a7; /* Green background for completed habits */
+  }
+  .day-column {
+    width: calc(100% / 33); /* Adjusts day columns to have uniform width */
+  }
+</style>
 </head>
 <body>
-<div id="app">
-    <div v-for="week in calculateWeeksOfYear(currentYear)" :key="week[0]">
-        <div v-for="date in week" :key="date" class="day" 
-            :class="{'completed': habits.includes(date.toISOString().slice(0, 10))}"
-            @click="toggleHabit(date.toISOString().slice(0, 10))">
-            {{ date.getDate() }}
-        </div>
-    </div>
+<div id="app" class="container mt-3">
+  <div class="header mb-3">
+    <!-- Month navigation buttons -->
+    <button class="btn btn-month mr-2" @click="changeMonth(-1)">&laquo; Previous Month</button>
+    <span>{{ currentYear }}-{{ String(currentMonth).padStart(2, '0') }}</span>
+    <button class="btn btn-month ml-2" @click="changeMonth(1)">Next Month &raquo;</button>
+  </div>
+  <!-- Habit tracker table -->
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Habit</th>
+        <th v-for="day in daysInMonth" :key="day" class="day-column">
+          {{ day }}<br>
+          <small>{{ dayNames[new Date(currentYear, currentMonth - 1, day).getDay()] }}</small>
+        </th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="habit in habits" :key="habit.id">
+        <td>{{ habit.name }}</td>
+        <td v-for="day in daysInMonth" :key="day" class="day-column"
+            :class="{ 'completed': habit.dates.includes(getFullDate(day)) }"
+            @click="toggleHabitDay(habit.id, getFullDate(day))">
+        </td>
+        <!-- Remove button in the action column -->
+        <td><button class="btn remove-habit" @click="removeHabit(habit.id)">Remove</button></td>
+      </tr>
+      <!-- Add new habit row -->
+      <tr>
+        <td colspan="33"><button class="btn btn-success" @click="addHabit">Add Habit</button></td>
+      </tr>
+    </tbody>
+  </table>
 </div>
 
 <script>
 new Vue({
-    el: '#app',
-    data: {
-        currentYear: new Date().getFullYear(),
-        habits: JSON.parse(localStorage.getItem('habits') || '[]')
-    },
-    methods: {
-        calculateWeeksOfYear(year) {
-            const startDate = new Date(year, 0, 1);
-            const endDate = new Date(year, 11, 31);
-            let currentWeek = [];
-            let weeks = [];
-
-            // Adjust the start date to the first Sunday of the year
-            while (startDate.getDay() !== 0) {
-                startDate.setDate(startDate.getDate() + 1);
-            }
-
-            while (startDate <= endDate) {
-                currentWeek.push(new Date(startDate));
-                startDate.setDate(startDate.getDate() + 1);
-                if (currentWeek.length === 7) {
-                    weeks.push([...currentWeek]);
-                    currentWeek = [];
-                }
-            }
-
-            // Handle the last week which might be less than 7 days
-            if (currentWeek.length > 0) {
-                weeks.push([...currentWeek]);
-            }
-
-            return weeks;
-        },
-        toggleHabit(dateString) {
-            const index = this.habits.indexOf(dateString);
-            if (index === -1) {
-                this.habits.push(dateString);
-            } else {
-                this.habits.splice(index, 1);
-            }
-            localStorage.setItem('habits', JSON.stringify(this.habits));
-        }
+  el: '#app',
+  data: {
+    currentYear: new Date().getFullYear(),
+    currentMonth: new Date().getMonth() + 1,
+    habits: [],
+    dayNames: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  },
+  computed: {
+    // Calculate days in the current month
+    daysInMonth() {
+      const numDays = new Date(this.currentYear, this.currentMonth, 0).getDate();
+      return Array.from({ length: numDays }, (_, i) => i + 1);
     }
+  },
+  methods: {
+    // Returns date string in YYYY-MM-DD format
+    getFullDate(day) {
+      return `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    },
+    // Toggles the completion status of a habit on a specific day
+    toggleHabitDay(habitId, dateString) {
+      const habit = this.habits.find(h => h.id === habitId);
+      const index = habit.dates.indexOf(dateString);
+      if (index === -1) {
+        habit.dates.push(dateString);
+      } else {
+        habit.dates.splice(index, 1);
+      }
+      this.saveHabits();
+    },
+    // Adds a new habit to the list
+    addHabit() {
+      const name = prompt("Enter new habit name:");
+      if (name) {
+        this.habits.push({ id: Date.now(), name, dates: [] });
+        this.saveHabits();
+      }
+    },
+    // Removes a habit from the list
+    removeHabit(habitId) {
+      this.habits = this.habits.filter(habit => habit.id !== habitId);
+      this.saveHabits();
+    },
+    // Changes the current month and loads new days
+    changeMonth(direction) {
+      this.currentMonth += direction;
+      if (this.currentMonth < 1) {
+        this.currentMonth = 12;
+        this.currentYear -= 1;
+      } else if (this.currentMonth > 12) {
+        this.currentMonth = 1;
+        this.currentYear += 1;
+      }
+    },
+    // Loads habits from local storage
+    loadHabits() {
+      const savedHabits = localStorage.getItem('habits');
+      if (savedHabits) {
+        this.habits = JSON.parse(savedHabits);
+      }
+    },
+    // Saves habits to local storage
+    saveHabits() {
+      localStorage.setItem('habits', JSON.stringify(this.habits));
+    }
+  },
+  created() {
+    this.loadHabits();
+  }
 });
 </script>
 </body>
