@@ -19,13 +19,21 @@
     font-size: 14px;
   }
   .heatmap {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(20px, 1fr)); /* 7 days a week */
-    gap: 2px;
+    display: flex;
+    flex-wrap: wrap;
+    max-width: 800px;
+    margin: auto;
+  }
+  .month {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 10px;
   }
   .day {
     width: 20px;
     height: 20px;
+    margin: 2px;
     background-color: #e0e0e0;
   }
   .completed {
@@ -51,6 +59,17 @@
   .text-center {
     text-align: center;
   }
+  .day-labels {
+    display: flex;
+    justify-content: space-between;
+    max-width: 800px;
+    margin: auto;
+  }
+  .day-label {
+    width: 20px;
+    text-align: center;
+    font-weight: bold;
+  }
 </style>
 </head>
 <body>
@@ -59,6 +78,10 @@
     <button class="btn btn-year mr-2" @click="changeYear(-1)">Previous Year</button>
     <span>{{ currentYear }}</span>
     <button class="btn btn-year ml-2" @click="changeYear(1)">Next Year</button>
+  </div>
+  
+  <div class="day-labels">
+    <div v-for="day in weekDays" :key="day" class="day-label">{{ day }}</div>
   </div>
   
   <div v-for="habit in habits" :key="habit.id" class="mb-3">
@@ -80,7 +103,8 @@ new Vue({
   el: '#app',
   data: {
     currentYear: new Date().getFullYear(),
-    habits: JSON.parse(localStorage.getItem('habits')) || []
+    habits: JSON.parse(localStorage.getItem('habits')) || [],
+    weekDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   },
   computed: {
     allDates() {
@@ -88,7 +112,7 @@ new Vue({
       for (let month = 1; month <= 12; month++) {
         for (let day = 1; day <= 31; day++) {
           const date = new Date(this.currentYear, month - 1, day);
-          if (date.getMonth() + 1 === month) { // Checks if the date is valid
+          if (date.getMonth() === month - 1) { // Check if the date is within the current month
             dates.push(date.toISOString().split('T')[0]);
           }
         }
@@ -98,7 +122,7 @@ new Vue({
   },
   methods: {
     toggleHabitDay(habitId, dateString) {
-      const habit = this.habits.find(habit => habit.id === habitId);
+      const habit = this.habits.find(h => h.id === habitId);
       const index = habit.dates.indexOf(dateString);
       if (index === -1) {
         habit.dates.push(dateString);
@@ -128,20 +152,15 @@ new Vue({
       localStorage.setItem('habits', JSON.stringify(this.habits));
     }
   },
-  watch: {
-    currentYear(newYear) {
-      // When the year changes, we clear the dates for the habits
-      this.habits.forEach(habit => habit.dates = habit.dates.filter(date => date.startsWith(newYear)));
-      this.saveHabits();
-    }
-  },
-  created() {
+  mounted() {
+    // If there are no habits in local storage, load a default set of habits
     if (!this.habits.length) {
       this.habits = [
-        // Populate with example data
-        { id: 1, name: 'Read', dates: ['2023-01-01', '2023-01-02'] },
-        // ... more habits
+        { id: 1, name: 'Read', dates: [] },
+        { id: 2, name: 'Exercise', dates: [] },
+        // ... more default habits can be added here
       ];
+      this.saveHabits();
     }
   }
 });
