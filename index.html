@@ -28,9 +28,12 @@
     background-color: #a5d6a7;
   }
   .remove-habit {
-    color: red;
     cursor: pointer;
-    margin-left: 10px;
+    color: white;
+    background-color: red;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
   }
 </style>
 </head>
@@ -44,19 +47,22 @@
   <table>
     <thead>
       <tr>
+        <th>Habit</th>
         <th v-for="day in daysInMonth" :key="day">{{ day }}</th>
+        <th>Action</th>
       </tr>
     </thead>
     <tbody>
       <tr v-for="habit in habits" :key="habit.id">
+        <td>{{ habit.name }}</td>
         <td v-for="day in daysInMonth" :key="day"
             :class="{ 'completed': habit.dates.includes(getFullDate(day)) }"
             @click="toggleHabitDay(habit.id, getFullDate(day))">
         </td>
-        <td class="remove-habit" @click="removeHabit(habit.id)">Remove</td>
+        <td><button class="remove-habit" @click="removeHabit(habit.id)">Remove</button></td>
       </tr>
       <tr>
-        <td colspan="32"><button @click="addHabit">Add Habit</button></td>
+        <td colspan="33"><button @click="addHabit">Add Habit</button></td>
       </tr>
     </tbody>
   </table>
@@ -68,11 +74,7 @@ new Vue({
   data: {
     currentYear: new Date().getFullYear(),
     currentMonth: new Date().getMonth(),
-    habits: [
-      { id: 1, name: 'Exercise', dates: [] },
-      { id: 2, name: 'Read Book', dates: [] }
-    ],
-    nextHabitId: 3
+    habits: []
   },
   computed: {
     currentMonthName() {
@@ -88,22 +90,25 @@ new Vue({
       return `${this.currentYear}-${String(this.currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     },
     toggleHabitDay(habitId, dateString) {
-      const habit = this.habits.find(habit => habit.id === habitId);
+      const habit = this.habits.find(h => h.id === habitId);
       const index = habit.dates.indexOf(dateString);
       if (index === -1) {
         habit.dates.push(dateString);
       } else {
         habit.dates.splice(index, 1);
       }
+      this.saveHabits();
     },
     addHabit() {
       const name = prompt("Enter new habit name:");
       if (name) {
-        this.habits.push({ id: this.nextHabitId++, name, dates: [] });
+        this.habits.push({ id: Date.now(), name, dates: [] });
+        this.saveHabits();
       }
     },
     removeHabit(habitId) {
       this.habits = this.habits.filter(habit => habit.id !== habitId);
+      this.saveHabits();
     },
     changeMonth(direction) {
       this.currentMonth += direction;
@@ -114,7 +119,19 @@ new Vue({
         this.currentMonth = 0;
         this.currentYear += 1;
       }
+    },
+    loadHabits() {
+      const savedHabits = localStorage.getItem('habits');
+      if (savedHabits) {
+        this.habits = JSON.parse(savedHabits);
+      }
+    },
+    saveHabits() {
+      localStorage.setItem('habits', JSON.stringify(this.habits));
     }
+  },
+  created() {
+    this.loadHabits();
   }
 });
 </script>
