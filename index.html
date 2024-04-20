@@ -2,53 +2,43 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Habit Yearly Heatmap Tracker</title>
+    <title>Yearly Habit Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        .container {
-            max-width: 1000px;
-            margin-top: 20px;
-        }
-        .header {
-            font-size: 24px;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 20px;
-        }
         .heatmap {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(20px, 1fr));
-            gap: 2px;
-        }
-        .week {
-            display: grid;
-            grid-template-rows: repeat(7, 20px); /* 7 days for each week */
-            gap: 2px;
+            grid-template-columns: repeat(53, 25px); /* 52 weeks + 1 for alignment purposes, each column 25px wide */
+            grid-template-rows: repeat(7, 25px); /* 7 days of the week, each row 25px high */
+            grid-gap: 2px;
         }
         .day {
-            width: 20px;
-            height: 20px;
-            border: 1px solid #ddd;
-            background-color: #f8f9fa;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 1px solid #ccc;
         }
         .completed {
-            background-color: #198754; /* Bootstrap success color */
+            background-color: #4CAF50; /* Green for days with completed habits */
+        }
+        .day-label {
+            writing-mode: vertical-rl;
+            text-align: center;
+            font-weight: bold;
+            height: 25px;
+            border: 1px solid #ccc;
         }
     </style>
 </head>
 <body>
-<div id="app" class="container">
-    <div class="header">{{ currentYear }}</div>
-
-    <div class="heatmap">
-        <!-- Create a week block for each week of the year -->
-        <div v-for="week in numberOfWeeks" :key="week" class="week">
-            <!-- Create a day block for each day of the week -->
-            <div v-for="dayOfWeek in 7" :key="dayOfWeek" class="day"
-                :class="{ 'completed': isHabitOnDay(week, dayOfWeek) }"
-                @click="toggleHabitDay(week, dayOfWeek)">
-            </div>
+<div id="app">
+    <div v-for="week in calculateWeeksOfYear(currentYear)" :key="week.start">
+        <div v-for="date in week.days" :key="date" 
+            :class="['day', { 'completed': checkIfHabitDone(date) }]" 
+            @click="toggleHabit(date)">
+            {{ new Date(date).getDate() }}
         </div>
     </div>
 </div>
@@ -58,58 +48,52 @@ new Vue({
     el: '#app',
     data: {
         currentYear: new Date().getFullYear(),
-        habits: JSON.parse(localStorage.getItem('habits')) || [],
-        days: this.initializeDays()
-    },
-    computed: {
-        numberOfWeeks() {
-            // Calculate the number of weeks in the current year
-            const startOfWeek = new Date(this.currentYear, 0, 1);
-            const endOfWeek = new Date(this.currentYear, 11, 31);
-            return Math.ceil((endOfWeek - startOfWeek) / (7 * 24 * 60 * 60 * 1000)) + 1;
-        }
+        habits: localStorage.getItem('habits') ? JSON.parse(localStorage.getItem('habits')) : []
     },
     methods: {
-        initializeDays() {
+        calculateWeeksOfYear(year) {
+            let startDate = new Date(year, 0, 1);
+            let endDate = new Date(year, 11, 31);
+            let weeks = [];
             let days = [];
-            // Initialize the days array with false to indicate no habit was performed
-            for (let week = 0; week < this.numberOfWeeks; week++) {
-                let weekDays = [];
-                for (let dayOfWeek = 0; dayOfWeek < 7; dayOfWeek++) {
-                    weekDays.push(false);
-                }
-                days.push(weekDays);
+
+            // Start the array with empty slots until the first day of the year
+            for (let i = 0; i < startDate.getDay(); i++) {
+                days.push(null);
             }
-            return days;
-        },
-        isHabitOnDay(week, dayOfWeek) {
-            // Check if a habit was performed on this day of the week in this week of the year
-            const date = new Date(this.currentYear, 0, (week - 1) * 7 + dayOfWeek);
-            const dateString = date.toISOString().split('T')[0];
-            return this.habits.some(habit => habit.dates.includes(dateString));
-        },
-        toggleHabitDay(week, dayOfWeek) {
-            const date = new Date(this.currentYear, 0, (week - 1) * 7 + dayOfWeek);
-            const dateString = date.toISOString().split('T')[0];
-            this.habits.forEach(habit => {
-                const index = habit.dates.indexOf(dateString);
-                if (index === -1) {
-                    habit.dates.push(dateString);
-                } else {
-                    habit.dates.splice(index, 1);
+
+            while (startDate <= endDate) {
+                if (startDate.getDay() === 0 && days.length) {
+                    weeks.push({start: days[0], days: days.map(date => date ? date.toISOString().substring(0, 10) : null)});
+                    days = [];
                 }
-            });
+                days.push(new Date(startDate));
+                startDate.setDate(startDate.getDate() + 1);
+            }
+
+            // Push the last week
+            if (days.length) {
+                weeks.push({start: days[0], days: days.map(date => date ? date.toISOString().substring(0, 10) : null)});
+            }
+
+            return weeks;
+        },
+        checkIfHabitDone(date) {
+            const dateString = date.toISOString().substring(0, 10);
+            return this.habits.includes(dateString);
+        },
+        toggleHabit(date) {
+            const dateString = date.toISOString().substring(0, 10);
+            const index = this.habits.indexOf(dateString);
+            if (index > -1) {
+                this.habits.splice(index, 1);
+            } else {
+                this.habits.push(dateString);
+            }
             this.saveHabits();
         },
         saveHabits() {
             localStorage.setItem('habits', JSON.stringify(this.habits));
-        }
-    },
-    mounted() {
-        // Populate with example data on first run
-        if (!this.habits.length) {
-            this.habits.push({id: 1, name: 'Exercise', dates: []});
-            // Repeat for more habits as needed
         }
     }
 });
