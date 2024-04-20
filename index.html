@@ -55,10 +55,10 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="week in getCalendarDays()" :key="week[0]">
+      <tr v-for="week in getCalendarDays()" :key="week[0].dateString">
         <td v-for="day in week" :key="day.dateString"
-            :class="{ 'completed': day.habits.includes(habit.id) }"
-            @click="toggleHabitDay(habit.id, day.dateString)">
+            :class="{ 'completed': checkHabitCompletion(day.dateString) }"
+            @click="toggleHabitDay(day.dateString)">
           {{ day.day }}
         </td>
       </tr>
@@ -103,16 +103,27 @@ new Vue({
         startDate.setDate(startDate.getDate() + 1);
       }
 
-      return _.chunk(days, 7); // Assuming lodash is available for chunking
+      return this.chunkArray(days, 7);
     },
-    toggleHabitDay(habitId, dateString) {
-      const habit = this.habits.find(h => h.id === habitId);
-      const index = habit.dates.indexOf(dateString);
-      if (index === -1) {
-        habit.dates.push(dateString);
-      } else {
-        habit.dates.splice(index, 1);
+    chunkArray(array, size) {
+      const chunked = [];
+      for (let i = 0; i < array.length; i += size) {
+        chunked.push(array.slice(i, i + size));
       }
+      return chunked;
+    },
+    toggleHabitDay(dateString) {
+      this.habits.forEach(habit => {
+        const index = habit.dates.indexOf(dateString);
+        if (index === -1) {
+          habit.dates.push(dateString);
+        } else {
+          habit.dates.splice(index, 1);
+        }
+      });
+    },
+    checkHabitCompletion(dateString) {
+      return this.habits.some(habit => habit.dates.includes(dateString));
     },
     addHabit() {
       const name = prompt("Enter new habit name:");
