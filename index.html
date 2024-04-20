@@ -14,6 +14,7 @@
   table {
     border-collapse: collapse;
     margin-top: 20px;
+    width: 100%;
   }
   th, td {
     border: 1px solid #ccc;
@@ -26,18 +27,10 @@
   .completed {
     background-color: #a5d6a7;
   }
-  .habit-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .habit-header span {
-    flex-grow: 1;
-    cursor: pointer;
-  }
   .remove-habit {
     color: red;
     cursor: pointer;
+    margin-left: 10px;
   }
 </style>
 </head>
@@ -51,19 +44,19 @@
   <table>
     <thead>
       <tr>
-        <th v-for="dayName in dayNames">{{ dayName }}</th>
+        <th v-for="day in daysInMonth" :key="day">{{ day }}</th>
       </tr>
     </thead>
     <tbody>
-      <tr v-for="week in getCalendarDays()" :key="week[0].dateString">
-        <td v-for="day in week" :key="day.dateString"
-            :class="{ 'completed': checkHabitCompletion(day.dateString) }"
-            @click="toggleHabitDay(day.dateString)">
-          {{ day.day }}
+      <tr v-for="habit in habits" :key="habit.id">
+        <td v-for="day in daysInMonth" :key="day"
+            :class="{ 'completed': habit.dates.includes(getFullDate(day)) }"
+            @click="toggleHabitDay(habit.id, getFullDate(day))">
         </td>
+        <td class="remove-habit" @click="removeHabit(habit.id)">Remove</td>
       </tr>
       <tr>
-        <td colspan="7"><button @click="addHabit">Add Habit</button></td>
+        <td colspan="32"><button @click="addHabit">Add Habit</button></td>
       </tr>
     </tbody>
   </table>
@@ -79,57 +72,38 @@ new Vue({
       { id: 1, name: 'Exercise', dates: [] },
       { id: 2, name: 'Read Book', dates: [] }
     ],
-    nextHabitId: 3,
-    dayNames: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    nextHabitId: 3
   },
   computed: {
     currentMonthName() {
       return new Date(this.currentYear, this.currentMonth).toLocaleString('default', { month: 'long' });
+    },
+    daysInMonth() {
+      const numDays = new Date(this.currentYear, this.currentMonth + 1, 0).getDate();
+      return Array.from({ length: numDays }, (_, i) => i + 1);
     }
   },
   methods: {
-    getCalendarDays() {
-      const monthStart = new Date(this.currentYear, this.currentMonth, 1);
-      const monthEnd = new Date(this.currentYear, this.currentMonth + 1, 0);
-      const startDate = new Date(monthStart);
-      startDate.setDate(startDate.getDate() - startDate.getDay()); // Start from Sunday
-
-      const days = [];
-      while (startDate <= monthEnd || startDate.getDay() !== 0) {
-        days.push({
-          day: startDate.getDate(),
-          dateString: `${this.currentYear}-${this.currentMonth + 1}-${startDate.getDate()}`
-        });
-        startDate.setDate(startDate.getDate() + 1);
+    getFullDate(day) {
+      return `${this.currentYear}-${String(this.currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    },
+    toggleHabitDay(habitId, dateString) {
+      const habit = this.habits.find(habit => habit.id === habitId);
+      const index = habit.dates.indexOf(dateString);
+      if (index === -1) {
+        habit.dates.push(dateString);
+      } else {
+        habit.dates.splice(index, 1);
       }
-
-      return this.chunkArray(days, 7);
-    },
-    chunkArray(array, size) {
-      const chunked = [];
-      for (let i = 0; i < array.length; i += size) {
-        chunked.push(array.slice(i, i + size));
-      }
-      return chunked;
-    },
-    toggleHabitDay(dateString) {
-      this.habits.forEach(habit => {
-        const index = habit.dates.indexOf(dateString);
-        if (index === -1) {
-          habit.dates.push(dateString);
-        } else {
-          habit.dates.splice(index, 1);
-        }
-      });
-    },
-    checkHabitCompletion(dateString) {
-      return this.habits.some(habit => habit.dates.includes(dateString));
     },
     addHabit() {
       const name = prompt("Enter new habit name:");
       if (name) {
         this.habits.push({ id: this.nextHabitId++, name, dates: [] });
       }
+    },
+    removeHabit(habitId) {
+      this.habits = this.habits.filter(habit => habit.id !== habitId);
     },
     changeMonth(direction) {
       this.currentMonth += direction;
