@@ -20,7 +20,7 @@
   }
   .heatmap {
     display: grid;
-    grid-template-columns: repeat(53, 1fr); /* 53 weeks to cover entire year */
+    grid-template-columns: repeat(7, minmax(20px, 1fr)); /* 7 days a week */
     gap: 2px;
   }
   .day {
@@ -44,6 +44,13 @@
     padding: 3px 7px;
     font-size: 14px;
   }
+  .month-label {
+    font-weight: bold;
+    margin-right: 5px;
+  }
+  .text-center {
+    text-align: center;
+  }
 </style>
 </head>
 <body>
@@ -53,6 +60,7 @@
     <span>{{ currentYear }}</span>
     <button class="btn btn-year ml-2" @click="changeYear(1)">Next Year</button>
   </div>
+  
   <div v-for="habit in habits" :key="habit.id" class="mb-3">
     <div class="habit-title">{{ habit.name }}</div>
     <div class="heatmap">
@@ -63,6 +71,7 @@
     </div>
     <button class="btn remove-btn mt-2" @click="removeHabit(habit.id)">Remove</button>
   </div>
+  
   <button class="btn btn-primary" @click="addHabit">Add New Habit</button>
 </div>
 
@@ -74,13 +83,14 @@ new Vue({
     habits: JSON.parse(localStorage.getItem('habits')) || []
   },
   computed: {
-    // Generates an array of date strings for the entire year
     allDates() {
-      let dates = [];
-      for(let month = 0; month < 12; month++) {
-        let numDays = new Date(this.currentYear, month + 1, 0).getDate();
-        for(let day = 1; day <= numDays; day++) {
-          dates.push(`${this.currentYear}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+      const dates = [];
+      for (let month = 1; month <= 12; month++) {
+        for (let day = 1; day <= 31; day++) {
+          const date = new Date(this.currentYear, month - 1, day);
+          if (date.getMonth() + 1 === month) { // Checks if the date is valid
+            dates.push(date.toISOString().split('T')[0]);
+          }
         }
       }
       return dates;
@@ -88,7 +98,7 @@ new Vue({
   },
   methods: {
     toggleHabitDay(habitId, dateString) {
-      const habit = this.habits.find(h => h.id === habitId);
+      const habit = this.habits.find(habit => habit.id === habitId);
       const index = habit.dates.indexOf(dateString);
       if (index === -1) {
         habit.dates.push(dateString);
@@ -105,8 +115,10 @@ new Vue({
       }
     },
     removeHabit(habitId) {
-      this.habits = this.habits.filter(habit => habit.id !== habitId);
-      this.saveHabits();
+      if(confirm('Are you sure you want to remove this habit?')) {
+        this.habits = this.habits.filter(habit => habit.id !== habitId);
+        this.saveHabits();
+      }
     },
     changeYear(direction) {
       this.currentYear += direction;
@@ -116,23 +128,20 @@ new Vue({
       localStorage.setItem('habits', JSON.stringify(this.habits));
     }
   },
-  mounted() {
-    this.$nextTick(() => {
-      // Ensure the heatmap grid columns fit the number of weeks in the year
-      const weeksInYear = this.getWeeksInYear(this.currentYear);
-      this.$el.querySelectorAll('.heatmap').forEach(el => {
-        el.style.gridTemplateColumns = `repeat(${weeksInYear}, 1fr)`;
-      });
-    });
+  watch: {
+    currentYear(newYear) {
+      // When the year changes, we clear the dates for the habits
+      this.habits.forEach(habit => habit.dates = habit.dates.filter(date => date.startsWith(newYear)));
+      this.saveHabits();
+    }
   },
-  methods: {
-    // ...existing methods...
-    getWeeksInYear(year) {
-      const startOfYear = new Date(year, 0, 1);
-      const endOfYear = new Date(year, 11, 31);
-      const startDayOfWeek = startOfYear.getDay();
-      const daysInYear = (endOfYear - startOfYear) / (1000 * 60 * 60 * 24) + 1;
-      return Math.ceil((startDayOfWeek + daysInYear) / 7);
+  created() {
+    if (!this.habits.length) {
+      this.habits = [
+        // Populate with example data
+        { id: 1, name: 'Read', dates: ['2023-01-01', '2023-01-02'] },
+        // ... more habits
+      ];
     }
   }
 });
